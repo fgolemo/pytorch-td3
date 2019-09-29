@@ -1,7 +1,19 @@
+try:
+    from comet_ml import Experiment
+except ImportError:
+    pass
+
 import gym
 import numpy as np
 import torch
 
+def start_comet(args):
+    exp = None
+    if args.comet is not None and len(args.comet) > 0:
+        workspace, project, apikey = args.comet.split("/")
+        exp = Experiment(api_key=apikey, project_name=project, workspace=workspace)
+        exp.set_name("td3")
+    return exp
 
 class ReplayBuffer(object):
 

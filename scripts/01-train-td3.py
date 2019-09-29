@@ -1,13 +1,16 @@
 import numpy as np
-import torch
 import gym
 import os
 
-from td3 import TD3, utils
 from td3.args import get_args_train
-from td3.utils import eval_policy
+from td3.utils import eval_policy, start_comet, ReplayBuffer
 
 args = get_args_train()
+exp = start_comet(args)
+
+from td3 import TD3
+
+import torch  # in case of comet
 
 file_name = f"td3_{args.env_name}_s{args.seed}"
 print("---------------------------------------")
@@ -45,7 +48,7 @@ kwargs["noise_clip"] = args.noise_clip * max_action
 kwargs["policy_freq"] = args.policy_freq
 policy = TD3.TD3(**kwargs)
 
-replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
+replay_buffer = ReplayBuffer(state_dim, action_dim)
 
 # Evaluate untrained policy
 evaluations = [eval_policy(policy, args.env_name, args.seed)]
@@ -96,4 +99,8 @@ for t in range(int(args.max_timesteps)):
     if (t + 1) % args.eval_freq == 0:
         evaluations.append(eval_policy(policy, args.env_name, args.seed))
         np.save(f"../results/{file_name}", evaluations)
-        torch.save(policy, f"../trained_models/{file_name}.pth")
+        if args.save_models:
+            torch.save(policy, f"../trained_models/{file_name}.pth")
+        if exp is not None:
+            exp.log_metric("reward", evaluations[-1])
+            exp.log_metric("frame", t)

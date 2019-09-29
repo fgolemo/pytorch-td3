@@ -11,7 +11,7 @@ args = get_args_eval()
 eval_env = gym.make(args.env_name)
 eval_env.seed(args.seed + 100)
 
-policy = torch.load(os.path.expanduser(args.policy))
+policy = torch.load(os.path.expanduser(args.policy), map_location=torch.device('cpu'))
 policy.actor.eval()  # set to test mode
 
 while True:
