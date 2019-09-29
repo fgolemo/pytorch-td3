@@ -1,4 +1,27 @@
-# Addressing Function Approximation Error in Actor-Critic Methods
+# TD3 python module
+
+    cd scripts
+
+To train:
+
+    python 01-train-td3.py --env_name "Reacher-v2" --seed 1 \
+    --start_timesteps 1000
+    
+to evaluate:
+
+    python 02-eval-td3.py --env_name "Reacher-v2" --seed 1 \
+    --policy "../trained_models/td3_Reacher-v2_s1.pth"
+    
+
+
+---
+
+## Old Readme:
+ 
+ 
+ 
+##Addressing Function Approximation Error in Actor-Critic Methods
+
 
 PyTorch implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3). If you use our code or data please cite the [paper](https://arxiv.org/abs/1802.09477).
 
