@@ -22,9 +22,9 @@ class ReplayBuffer(object):
         self.ptr = 0
         self.size = 0
 
-        self.state = np.zeros((max_size, state_dim))
+        self.state = np.zeros((max_size, state_dim), dtype=np.float32)
         self.action = np.zeros((max_size, action_dim))
-        self.next_state = np.zeros((max_size, state_dim))
+        self.next_state = np.zeros((max_size, state_dim), dtype=np.float32)
         self.reward = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
 
