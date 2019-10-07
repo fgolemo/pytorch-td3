@@ -4,6 +4,8 @@ def get_args_train():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--policy_name", default="TD3")  # Policy name
     parser.add_argument("--env_name", default="HalfCheetah-v2")  # OpenAI gym environment name
+    parser.add_argument("--custom_gym", default="")  # do you habe a custom gym environment that needs t
+    parser.add_argument("--policy", default="Mlp")  # Mlp or Cnn
     parser.add_argument("--seed", default=2, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--start_timesteps", default=1e4, type=int)  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=1e3, type=float)  # How often (time steps) we evaluate

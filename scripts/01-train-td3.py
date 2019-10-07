@@ -1,6 +1,12 @@
+import importlib
+from _operator import mul
+from functools import reduce
+
 import numpy as np
 import gym
 import os
+
+from gym.spaces import Box
 
 from td3.args import get_args_train
 from td3.utils import eval_policy, start_comet, ReplayBuffer
@@ -23,7 +29,13 @@ if not os.path.exists("../results"):
 if not os.path.exists("../trained_models"):
     os.makedirs("../trained_models")
 
+if args.custom_gym is not None and args.custom_gym != "":
+    module = importlib.import_module(args.custom_gym, package=None)
+    print("imported env '{}'".format((args.custom_gym)))
+
 env = gym.make(args.env_name)
+
+print(env.observation_space)
 
 # Set seeds
 env.seed(args.seed)
@@ -40,6 +52,7 @@ kwargs = {
     "max_action": max_action,
     "discount": args.discount,
     "tau": args.tau,
+    "policy": args.policy
 }
 
 # Target policy smoothing is scaled wrt the action scale
@@ -47,6 +60,9 @@ kwargs["policy_noise"] = args.policy_noise * max_action
 kwargs["noise_clip"] = args.noise_clip * max_action
 kwargs["policy_freq"] = args.policy_freq
 policy = TD3.TD3(**kwargs)
+
+if args.policy == "Cnn":
+    state_dim = reduce(mul, env.observation_space.shape)
 
 replay_buffer = ReplayBuffer(state_dim, action_dim)
 
@@ -74,8 +90,12 @@ for t in range(int(args.max_timesteps)):
     next_state, reward, done, _ = env.step(action)
     done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
 
+    print(t, done, done_bool)
+
     # Store data in replay buffer
-    replay_buffer.add(state, action, next_state, reward, done_bool)
+    replay_buffer.add(
+        state.reshape((-1)), action, next_state.reshape((-1)), reward,
+        done_bool)
 
     state = next_state
     episode_reward += reward
