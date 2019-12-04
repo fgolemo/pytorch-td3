@@ -1,6 +1,9 @@
 import importlib
 from _operator import mul
+from datetime import datetime
 from functools import reduce
+from random import shuffle
+from shutil import copyfile
 
 import numpy as np
 import gym
@@ -35,7 +38,16 @@ if args.custom_gym is not None and args.custom_gym != "":
 
 env = gym.make(args.env_name)
 
-print(env.observation_space)
+if "gibson" in args.custom_gym:
+    from gibson_transfer.self_play_policies import POLICY_DIR
+    now = datetime.now()  # current date and time
+
+    subfolder = f"{args.env_name}-s{args.seed}-t{now.strftime('%y%m%d_%H%M%S')}"
+    path = os.path.join(POLICY_DIR, subfolder)
+    os.mkdir(path)
+    print("TD3: using Gibson env with output path:", path)
+    env.unwrapped.subfolder = subfolder
+    print (type(env.unwrapped))
 
 # Set seeds
 env.seed(args.seed)
@@ -90,7 +102,7 @@ for t in range(int(args.max_timesteps)):
     next_state, reward, done, _ = env.step(action)
     done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
 
-    print(t, done, done_bool)
+    # print(t, done, done_bool)
 
     # Store data in replay buffer
     replay_buffer.add(
@@ -120,7 +132,28 @@ for t in range(int(args.max_timesteps)):
         evaluations.append(eval_policy(policy, args.env_name, args.seed))
         np.save(f"../results/{file_name}", evaluations)
         if args.save_models:
-            torch.save(policy, f"../trained_models/{file_name}.pth")
+            source_path = f"../trained_models/{file_name}.pth"
+            torch.save(policy, source_path)
+
+            if "gibson" in args.custom_gym:
+                # copy over policy
+
+                # nasty, nasty, first unwrapped is to get to dummyVecEnv, then to source
+                target_path = env.unwrapped.dir
+                # target_path = os.path.basename(os.path.normpath(target_path))
+                print("TD3: target path", target_path)
+
+                # if it's more than 20 policies, delete one at random
+                policies = [x for x in os.listdir(target_path) if "-td3.pt" in x]
+                if len(policies) > 20:
+                    shuffle(policies)
+                    os.remove(os.path.join(target_path, policies[0]))
+
+                print("\n\n\n\n\nTD3: WRITING NEW POLICY:", t, "\n\n\n\n\n\n")
+                episode = int(np.floor(t / args.eval_freq))
+                copyfile(source_path,
+                         os.path.join(target_path, f"ep-{episode:06}-td3.pt"))
+
         if exp is not None:
             exp.log_metric("reward", evaluations[-1])
             exp.log_metric("frame", t)

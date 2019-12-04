@@ -11,6 +11,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
 # Paper: https://arxiv.org/abs/1802.09477
 
+
 def str_to_class(classname):
     return getattr(sys.modules[__name__], classname)
 
@@ -19,6 +20,7 @@ class Flatten(nn.Module):
 
     def forward(self, x):
         return x.view(x.size(0), -1)
+
 
 class MlpActor(nn.Module):
 
@@ -53,7 +55,7 @@ class CnnActor(nn.Module):
         super(CnnActor, self).__init__()
 
         self.img_embed = nn.Sequential(
-            init_cnn(nn.Conv2d(8, 96, 3, stride=2)), nn.ReLU(),
+            init_cnn(nn.Conv2d(3, 96, 3, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 96, 5, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 32, 5, stride=2)), nn.ReLU(), Flatten(),
             init_cnn(nn.Linear(32 * 8 * 8, 256)), nn.ReLU())
@@ -65,7 +67,10 @@ class CnnActor(nn.Module):
         self.max_action = max_action
 
     def forward(self, state):
-        a = self.img_embed(state.view(-1,8,84,84))
+        a = state.view(-1, 84, 84, 3)
+        a = a.permute(0,3,1,2)
+
+        a = self.img_embed(a)
         a = F.relu(self.l1(a))
         a = F.relu(self.l2(a))
         return self.max_action * torch.tanh(self.l3(a))
@@ -114,7 +119,7 @@ class CnnCritic(nn.Module):
 
         # Q1 architecture
         self.img_embed_q1 = nn.Sequential(
-            init_cnn(nn.Conv2d(8, 96, 3, stride=2)), nn.ReLU(),
+            init_cnn(nn.Conv2d(3, 96, 3, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 96, 5, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 32, 5, stride=2)), nn.ReLU(), Flatten(),
             init_cnn(nn.Linear(32 * 8 * 8, 128)), nn.ReLU())
@@ -124,7 +129,7 @@ class CnnCritic(nn.Module):
 
         # Q2 architecture
         self.img_embed_q2 = nn.Sequential(
-            init_cnn(nn.Conv2d(8, 96, 3, stride=2)), nn.ReLU(),
+            init_cnn(nn.Conv2d(3, 96, 3, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 96, 5, stride=2)), nn.ReLU(),
             init_cnn(nn.Conv2d(96, 32, 5, stride=2)), nn.ReLU(), Flatten(),
             init_cnn(nn.Linear(32 * 8 * 8, 128)), nn.ReLU())
@@ -133,14 +138,14 @@ class CnnCritic(nn.Module):
         self.l6 = nn.Linear(256, 1)
 
     def forward(self, state, action):
-        x = self.img_embed_q1(state.view(-1,8,84,84))
+        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
         sa1 = torch.cat([x, action], 1)
 
         q1 = F.relu(self.l1(sa1))
         q1 = F.relu(self.l2(q1))
         q1 = self.l3(q1)
 
-        x = self.img_embed_q1(state.view(-1,8,84,84))
+        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
         sa2 = torch.cat([x, action], 1)
 
         q2 = F.relu(self.l4(sa2))
@@ -149,7 +154,7 @@ class CnnCritic(nn.Module):
         return q1, q2
 
     def Q1(self, state, action):
-        x = self.img_embed_q1(state.view(-1,8,84,84))
+        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
         sa = torch.cat([x, action], 1)
 
         q1 = F.relu(self.l1(sa))
@@ -171,7 +176,7 @@ class TD3(object):
                  policy_freq=2,
                  policy="Mlp"):
 
-        assert policy in ["Mlp","Cnn"]
+        assert policy in ["Mlp", "Cnn"]
 
         actor_class = str_to_class(f"{policy}Actor")
         critic_class = str_to_class(f"{policy}Critic")

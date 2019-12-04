@@ -13,6 +13,10 @@ def start_comet(args):
         workspace, project, apikey = args.comet.split("/")
         exp = Experiment(api_key=apikey, project_name=project, workspace=workspace)
         exp.set_name("td3")
+        if len(args.comet_tags) > 0:
+            comet_tags = args.comet_tags.split(",")
+            for tag in comet_tags:
+                exp.add_tag(tag)
     return exp
 
 class ReplayBuffer(object):

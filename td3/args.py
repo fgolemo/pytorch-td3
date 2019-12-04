@@ -19,6 +19,7 @@ def get_args_train():
     parser.add_argument("--noise_clip", default=0.5, type=float)  # Range to clip target policy noise
     parser.add_argument("--policy_freq", default=2, type=int)  # Frequency of delayed policy updates
     parser.add_argument("--comet") # comet.ml login in format: workspace/project/apikey
+    parser.add_argument('--comet-tags',default='') # add comet.ml tags to the experiment (comma-separated).
     args = parser.parse_args()
     return args
 
