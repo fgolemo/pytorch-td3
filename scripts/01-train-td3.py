@@ -76,7 +76,7 @@ policy = TD3.TD3(**kwargs)
 if args.policy == "Cnn":
     state_dim = reduce(mul, env.observation_space.shape)
 
-replay_buffer = ReplayBuffer(state_dim, action_dim)
+replay_buffer = ReplayBuffer(state_dim, action_dim, max_size=int(1e5))
 
 # Evaluate untrained policy
 evaluations = [eval_policy(policy, args.env_name, args.seed)]
