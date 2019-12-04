@@ -203,8 +203,10 @@ class TD3(object):
     def select_action(self, state, device_override=None):
         state = torch.FloatTensor(state.reshape(1, -1))
         if device_override is not None:
-            device = torch.device(device_override)
-        state = state.to(device)
+            state = state.to(torch.device(device_override))
+        else:
+            state = state.to(device)
+
         return self.actor(state).cpu().data.numpy().flatten()
 
     def train(self, replay_buffer, batch_size=100):
