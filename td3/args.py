@@ -27,6 +27,7 @@ def get_args_eval():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--policy_name", default="TD3")  # Policy name
     parser.add_argument("--env_name", default="HalfCheetah-v2")  # OpenAI gym environment name
+    parser.add_argument("--custom_gym", default="")  # do you habe a custom gym environment that needs to be imported
     parser.add_argument("--seed", default=2, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--policy")
     args = parser.parse_args()
