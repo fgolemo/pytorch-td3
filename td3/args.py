@@ -7,6 +7,7 @@ def get_args_train():
     parser.add_argument("--custom_gym", default="")  # do you habe a custom gym environment that needs t
     parser.add_argument("--policy", default="Mlp")  # Mlp or Cnn
     parser.add_argument("--seed", default=2, type=int)  # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--log_interval", default=10, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--start_timesteps", default=1e4, type=int)  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=1e3, type=float)  # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e6, type=int)  # Max time steps to run environment for

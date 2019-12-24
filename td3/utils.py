@@ -1,3 +1,5 @@
+from gym import Wrapper
+
 try:
     from comet_ml import Experiment
 except ImportError:
@@ -53,6 +55,37 @@ class ReplayBuffer(object):
                 torch.FloatTensor(self.next_state[ind]).to(self.device),
                 torch.FloatTensor(self.reward[ind]).to(self.device),
                 torch.FloatTensor(self.not_done[ind]).to(self.device))
+
+from collections import deque
+import time
+
+class Monitor(Wrapper):
+    def __init__(self, env):
+        Wrapper.__init__(self, env)
+        self.episode_return = None
+        self.episode_len = None
+        self.episode_count = 0
+        self.tstart = time.time()
+
+    def reset(self):
+        obs = self.env.reset()
+        self.episode_return = 0
+        self.episode_len = 0
+        return obs
+
+    def step(self, action):
+        obs, rew, done, info = self.env.step(action)
+
+        self.episode_return += rew
+        self.episode_len += 1
+
+        if done:
+            info['episode'] = {'r': self.episode_return, 'l': self.episode_len, 't': round(time.time() - self.tstart, 6)}
+            self.episode_count += 1
+            self.episode_return = 0
+            self.episode_len = 0
+
+        return obs, rew, done, info
 
 
 # Runs policy for X episodes and returns average reward

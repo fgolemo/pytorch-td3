@@ -1,5 +1,6 @@
 import importlib
 from _operator import mul
+from collections import deque
 from datetime import datetime
 from functools import reduce
 from random import shuffle
@@ -12,7 +13,7 @@ import os
 from gym.spaces import Box
 
 from td3.args import get_args_train
-from td3.utils import eval_policy, start_comet, ReplayBuffer
+from td3.utils import eval_policy, start_comet, ReplayBuffer, Monitor
 
 args = get_args_train()
 exp = start_comet(args)
@@ -36,7 +37,7 @@ if args.custom_gym is not None and args.custom_gym != "":
     module = importlib.import_module(args.custom_gym, package=None)
     print("imported env '{}'".format((args.custom_gym)))
 
-env = gym.make(args.env_name)
+env = Monitor(gym.make(args.env_name))
 
 if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
     from gibson_transfer.self_play_policies import POLICY_DIR
@@ -47,7 +48,7 @@ if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
     os.mkdir(path)
     print("TD3: using Gibson env with output path:", path)
     env.unwrapped.subfolder = subfolder
-    print (type(env.unwrapped))
+    print(type(env.unwrapped))
 
 # Set seeds
 env.seed(args.seed)
@@ -57,6 +58,9 @@ np.random.seed(args.seed)
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
+
+episode_rewards = deque(maxlen=10)
+episode_length = deque(maxlen=10)
 
 kwargs = {
     "state_dim": state_dim,
@@ -99,8 +103,8 @@ for t in range(int(args.max_timesteps)):
                 -max_action, max_action)
 
     # Perform action
-    next_state, reward, done, _ = env.step(action)
-    done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
+    next_state, reward, done, info = env.step(action)
+    done_bool = float(done) if episode_timesteps < env.unwrapped._max_episode_steps else 0
 
     # print(t, done, done_bool)
 
@@ -127,6 +131,20 @@ for t in range(int(args.max_timesteps)):
         episode_timesteps = 0
         episode_num += 1
 
+        if 'episode' in info.keys():
+            episode_rewards.append(info['episode']['r'])
+            episode_length.append(info['episode']['l'])
+
+    if (t + 1) % args.log_interval == 0 and len(episode_rewards) > 1:
+        if exp is not None:
+            exp.log_metric("Reward Mean", np.mean(episode_rewards), step=t)
+            exp.log_metric("Reward Min", np.min(episode_rewards), step=t)
+            exp.log_metric("Reward Max", np.max(episode_rewards), step=t)
+            exp.log_metric(
+                "Episode Length Mean ", np.mean(episode_length), step=t)
+            exp.log_metric("Episode Length Min", np.min(episode_length), step=t)
+            exp.log_metric("Episode Length Max", np.max(episode_length), step=t)
+
     # Evaluate episode
     if (t + 1) % args.eval_freq == 0:
         evaluations.append(eval_policy(policy, args.env_name, args.seed))
@@ -144,7 +162,9 @@ for t in range(int(args.max_timesteps)):
                 print("TD3: target path", target_path)
 
                 # if it's more than 20 policies, delete one at random
-                policies = [x for x in os.listdir(target_path) if "-td3.pt" in x]
+                policies = [
+                    x for x in os.listdir(target_path) if "-td3.pt" in x
+                ]
                 if len(policies) > 20:
                     shuffle(policies)
                     os.remove(os.path.join(target_path, policies[0]))
@@ -155,5 +175,4 @@ for t in range(int(args.max_timesteps)):
                          os.path.join(target_path, f"ep-{episode:06}-td3.pt"))
 
         if exp is not None:
-            exp.log_metric("reward", evaluations[-1])
-            exp.log_metric("frame", t)
+            exp.log_metric("reward eval", evaluations[-1])
