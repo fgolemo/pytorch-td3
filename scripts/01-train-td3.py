@@ -38,7 +38,7 @@ if args.custom_gym is not None and args.custom_gym != "":
 
 env = gym.make(args.env_name)
 
-if "gibson" in args.custom_gym:
+if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
     from gibson_transfer.self_play_policies import POLICY_DIR
     now = datetime.now()  # current date and time
 
@@ -135,7 +135,7 @@ for t in range(int(args.max_timesteps)):
             source_path = f"../trained_models/{file_name}.pth"
             torch.save(policy, source_path)
 
-            if "gibson" in args.custom_gym:
+            if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
                 # copy over policy
 
                 # nasty, nasty, first unwrapped is to get to dummyVecEnv, then to source
