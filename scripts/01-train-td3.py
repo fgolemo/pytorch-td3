@@ -55,7 +55,7 @@ env.seed(args.seed)
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
-state_dim = env.observation_space.shape[0]
+state_dim = env.observation_space.shape
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
 
@@ -76,9 +76,6 @@ kwargs["policy_noise"] = args.policy_noise * max_action
 kwargs["noise_clip"] = args.noise_clip * max_action
 kwargs["policy_freq"] = args.policy_freq
 policy = TD3.TD3(**kwargs)
-
-if args.policy == "Cnn":
-    state_dim = reduce(mul, env.observation_space.shape)
 
 replay_buffer = ReplayBuffer(state_dim, action_dim, max_size=int(1e5))
 
@@ -104,14 +101,13 @@ for t in range(int(args.max_timesteps)):
 
     # Perform action
     next_state, reward, done, info = env.step(action)
-    done_bool = float(done) if episode_timesteps < env.unwrapped._max_episode_steps else 0
+    done_bool = float(
+        done) if episode_timesteps < env.unwrapped._max_episode_steps else 0
 
     # print(t, done, done_bool)
 
     # Store data in replay buffer
-    replay_buffer.add(
-        state.reshape((-1)), action, next_state.reshape((-1)), reward,
-        done_bool)
+    replay_buffer.add(state, action, next_state, reward, done_bool)
 
     state = next_state
     episode_reward += reward

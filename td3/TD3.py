@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from td3.utils import show
+from torchvision.utils import make_grid
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -67,10 +69,9 @@ class CnnActor(nn.Module):
         self.max_action = max_action
 
     def forward(self, state):
-        a = state.view(-1, 84, 84, 3)
-        a = a.permute(0,3,1,2)
-
-        a = self.img_embed(a)
+        # print ("actor-should only ever see first state")
+        # show(make_grid(state.view(-1, 3, 84, 84)[:16]))
+        a = self.img_embed(state)
         a = F.relu(self.l1(a))
         a = F.relu(self.l2(a))
         return self.max_action * torch.tanh(self.l3(a))
@@ -138,14 +139,14 @@ class CnnCritic(nn.Module):
         self.l6 = nn.Linear(256, 1)
 
     def forward(self, state, action):
-        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
+        x = self.img_embed_q1(state)
         sa1 = torch.cat([x, action], 1)
 
         q1 = F.relu(self.l1(sa1))
         q1 = F.relu(self.l2(q1))
         q1 = self.l3(q1)
 
-        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
+        x = self.img_embed_q1(state)
         sa2 = torch.cat([x, action], 1)
 
         q2 = F.relu(self.l4(sa2))
@@ -154,7 +155,7 @@ class CnnCritic(nn.Module):
         return q1, q2
 
     def Q1(self, state, action):
-        x = self.img_embed_q1(state.view(-1, 3, 84, 84))
+        x = self.img_embed_q1(state)
         sa = torch.cat([x, action], 1)
 
         q1 = F.relu(self.l1(sa))
@@ -180,6 +181,7 @@ class TD3(object):
 
         actor_class = str_to_class(f"{policy}Actor")
         critic_class = str_to_class(f"{policy}Critic")
+        self.policy = policy
 
         self.actor = actor_class(state_dim, action_dim, max_action).to(device)
         self.actor_target = copy.deepcopy(self.actor)
@@ -201,7 +203,12 @@ class TD3(object):
         self.total_it = 0
 
     def select_action(self, state, device_override=None):
-        state = torch.FloatTensor(state.reshape(1, -1))
+        #here wa assume that no preprocessing has taken place.
+        if self.policy == "Cnn":
+            state = torch.FloatTensor(state).unsqueeze(0).permute(0, 3, 1, 2).div(255)
+        else:
+            state = torch.FloatTensor(state).unsqueeze(0)
+
         if device_override is not None:
             state = state.to(torch.device(device_override))
         else:
@@ -215,6 +222,9 @@ class TD3(object):
         # Sample replay buffer
         state, action, next_state, reward, not_done = replay_buffer.sample(
             batch_size)
+
+        # state[8:16] = next_state[:8]
+        # show(make_grid(state.view(-1, 3, 84, 84)[:16]))
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise

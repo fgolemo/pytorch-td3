@@ -1,5 +1,5 @@
 from gym import Wrapper
-
+import matplotlib.pyplot as plt
 try:
     from comet_ml import Experiment
 except ImportError:
@@ -28,9 +28,16 @@ class ReplayBuffer(object):
         self.ptr = 0
         self.size = 0
 
-        self.state = np.zeros((max_size, state_dim), dtype=np.float32)
+        #TODO if it's image, then make this uint
+        if len(state_dim) == 1: # raw state, float enc
+            self.state = np.zeros((max_size, state_dim), dtype=np.float32)
+            self.next_state = np.zeros((max_size, state_dim), dtype=np.float32)
+        elif len(state_dim) == 3: # img, int enc
+            self.state = np.zeros((max_size, *state_dim), dtype=np.uint8)
+            self.next_state = np.zeros((max_size, *state_dim), dtype=np.uint8)
+            print (self.state.shape)
+
         self.action = np.zeros((max_size, action_dim))
-        self.next_state = np.zeros((max_size, state_dim), dtype=np.float32)
         self.reward = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
 
@@ -49,10 +56,9 @@ class ReplayBuffer(object):
 
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, size=batch_size)
-
-        return (torch.FloatTensor(self.state[ind]).to(self.device),
+        return (torch.FloatTensor(self.state[ind]).permute(0,3,1,2).div(255).to(self.device),
                 torch.FloatTensor(self.action[ind]).to(self.device),
-                torch.FloatTensor(self.next_state[ind]).to(self.device),
+                torch.FloatTensor(self.next_state[ind]).permute(0,3,1,2).div(255).to(self.device),
                 torch.FloatTensor(self.reward[ind]).to(self.device),
                 torch.FloatTensor(self.not_done[ind]).to(self.device))
 
@@ -87,6 +93,10 @@ class Monitor(Wrapper):
 
         return obs, rew, done, info
 
+def show(img):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
+    plt.show()
 
 # Runs policy for X episodes and returns average reward
 def eval_policy(policy, env_name, seed, eval_episodes=10):
@@ -107,3 +117,4 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
     print("---------------------------------------")
     return avg_reward
+
